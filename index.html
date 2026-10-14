@@ -1,0 +1,1250 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PDF Notes</title>
+<style>
+  body{margin:0;font:14px -apple-system,system-ui,sans-serif;display:flex;flex-direction:column;height:100vh;background:#e9e9ec;color:#222}
+  #bar{display:flex;gap:6px;align-items:center;padding:6px 10px;background:#fff;border-bottom:1px solid #ccc;flex-wrap:wrap}
+  button,input,select{font:inherit}
+  button{padding:4px 10px;border:1px solid #bbb;border-radius:6px;background:#f6f6f6;cursor:pointer}
+  button.on{background:#222;color:#fff;border-color:#222}
+  #pn{width:48px;text-align:center}
+  #lib{max-width:200px}
+  #main{flex:1;display:flex;min-height:0}
+  #view{flex:1;overflow:auto;padding:16px 16px 60vh 40px;position:relative}
+  #pages{--w:900px}
+  .pg{position:relative;margin:0 auto 14px;background:#fff;box-shadow:0 2px 12px #0003;width:var(--w)}
+  .pg img{position:absolute;inset:0;width:100%;height:100%;user-select:none;-webkit-user-drag:none}
+  .pg svg{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+  .pg svg.type{cursor:crosshair} .pg svg.pen{cursor:cell} .pg svg.hl{cursor:text} .pg svg.crop{cursor:copy} body.scroll .pg svg{touch-action:pan-y pinch-zoom} .pg svg.lasso{cursor:crosshair} .pg svg.space{cursor:row-resize} .pg svg.erase{cursor:not-allowed}
+  #pages.g{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:10px}
+  #pages.g .pg{width:auto;margin:0}
+  #pages.g .lbl{left:2px;top:2px;background:#fffd;padding:0 4px;border-radius:3px;pointer-events:auto;cursor:zoom-in;z-index:2}
+  body.sepia .pg{background:#f4ecd8} body.sepia .pg img{filter:sepia(.35) contrast(.95)}
+  body.sepia #view{background:#d9cfb8}
+  body.dark{background:#1b1b1d;color:#ddd}
+  body.dark .pg img{filter:invert(.92) hue-rotate(180deg)}
+  body.dark .pg{background:#111}
+  body.dark .pg svg rect{mix-blend-mode:normal !important;fill-opacity:.32 !important}
+  body.dark #view{background:#2a2a2d}
+  body.dark #bar,body.dark #side,body.dark #nav,body.dark #thumbs,body.dark #bms,body.dark #nts,body.dark #tabs button.on{background:#222;color:#ddd;border-color:#444}
+  body.dark button,body.dark select,body.dark input,body.dark textarea{background:#333;color:#eee;border-color:#555}
+  body.dark .note,body.dark .u{border-color:#444} body.dark .u:hover{background:#2c2c2c}
+  body.dark .q{color:#bbb}
+  .cz{background:#ccc;color:transparent;border-radius:3px;user-select:none} body.dark .cz{background:#555}
+  #rc mark{background:#ffe14d;color:#000;padding:0 2px;border-radius:2px}
+  .ca{border-top:1px dashed #aaa;padding-top:8px;margin-top:12px;color:#444} body.dark .ca{color:#bbb}
+  #dock{position:fixed;left:50%;transform:translateX(-50%);bottom:10px;z-index:20;display:flex;flex-direction:column;align-items:center;gap:6px}
+  #dk,#rp{display:flex;gap:6px;align-items:center;background:#fffe;border:1px solid #bbb;border-radius:10px;padding:5px 8px;box-shadow:0 2px 10px #0003}
+  body.dark #dk,body.dark #rp{background:#222e;border-color:#555}
+  #rp b{min-width:34px;text-align:center}
+  .lbl{position:absolute;left:-30px;top:2px;color:#888;font-size:11px}
+  #nav{width:190px;background:#fafafa;border-right:1px solid #ccc;display:flex;flex-direction:column;min-height:0}
+  #tabs{display:flex}
+  #tabs button{flex:1;border:0;border-bottom:2px solid transparent;border-radius:0;background:none}
+  #tabs button.on{border-color:#222;background:#fff;color:#222}
+  #nav.wide{width:300px}
+  #nts{flex:1;overflow:auto;padding:8px;min-height:0}
+  .u{border:1px solid #ddd;border-left:4px solid var(--c);border-radius:4px;padding:5px 6px;margin-bottom:8px;cursor:pointer}
+  .u:hover{background:#f3f3f3}
+  .u .q{max-height:none;margin:0 0 4px;border:0;padding:0}
+  .u p{margin:0 0 4px;white-space:pre-wrap}
+  .u small{color:#777}
+  .u button{float:right;padding:0 6px}
+  dialog{border:1px solid #888;border-radius:8px;padding:12px;max-width:90vw}
+  #lb{width:760px;height:80vh}
+  #lb[open]{display:flex;flex-direction:column}
+  #lbh{display:flex;gap:6px;margin-bottom:8px}
+  #lq{flex:1}
+  #ll{flex:1;overflow:auto}
+  #ll h4{margin:12px 0 6px}
+  #bi label{display:flex;gap:6px;margin:4px 0;align-items:center}
+  #bi label span{width:70px}
+  #bi input{flex:1}
+  .tg{width:100%;box-sizing:border-box;margin-top:4px}
+  .u .tags{color:#06c}
+  #thumbs,#bms{flex:1;overflow:auto;padding:8px;min-height:0}
+  .th{position:relative;margin:0 auto 10px;width:130px;border:2px solid transparent;cursor:pointer;background:#fff;box-shadow:0 1px 4px #0003}
+  .th.cur{border-color:#3b82f6}
+  .th img{display:block;width:100%}
+  .th span{position:absolute;bottom:2px;right:4px;font-size:11px;background:#fffc;padding:0 3px}
+  .th b{position:absolute;top:0;left:3px;color:#e0a800;text-shadow:0 0 2px #fff}
+  #bmadd{display:flex;gap:4px;margin-bottom:8px}
+  #bmt{flex:1;min-width:0}
+  .bm{display:flex;gap:4px;align-items:center;padding:3px 4px;border-radius:4px;cursor:pointer}
+  .bm:hover{background:#eee}
+  .bm .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bm small{color:#777}
+  .bm button{padding:0 5px;border:0;background:none;color:#a00}
+  [hidden]{display:none!important}
+  body.nonav #nav,body.noside #side,body.nonav #rzn,body.noside #rzs{display:none}
+  body.nobar #bar>:not(#tbar):not(#tnav):not(#tside):not(#st){display:none}
+  .rz{width:5px;flex:none;cursor:col-resize;background:#0000;margin:0 -2px;z-index:5}
+  .rz:hover,.rz.d{background:#3b82f680}
+  #side{width:320px;overflow:auto;background:#fff;border-left:1px solid #ccc;padding:8px}
+  .note{border:1px solid #ddd;border-radius:6px;padding:6px;margin-bottom:8px}
+  .note.c textarea,.note.c .tg,.note.c .kc{display:none}
+  .note.c .nh{margin-bottom:0}
+  .note.c .q{max-height:1.5em;white-space:nowrap;text-overflow:ellipsis;margin:4px 0 0}
+  #fold{position:sticky;top:-8px;z-index:2;display:flex;gap:6px;margin:-8px -8px 8px;padding:6px 8px;background:inherit;border-bottom:1px solid #ccc}
+  .note.act{border-color:#e6a800;box-shadow:0 0 0 2px #ffd95a}
+  .note textarea{width:100%;box-sizing:border-box;min-height:48px;font:inherit}
+  .nh{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;cursor:pointer}
+  .nh small{color:#777}
+  .q{font-style:italic;color:#555;margin:0 0 4px;border-left:4px solid var(--c);padding-left:6px;max-height:4.5em;overflow:hidden}
+  #empty{margin:80px auto;text-align:center;color:#555}
+  #st{margin-left:auto;color:#777}
+  #sr{width:820px;height:78vh}
+  #sr[open]{display:flex;flex-direction:column}
+  #so{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px;color:#555}
+  .chip{display:inline-block;padding:1px 8px;margin:0 4px 4px 0;border-radius:10px;border:2px solid transparent;cursor:pointer;color:#000}
+  .chip.off{opacity:.35}
+  .ctx{color:#777} .sc{font-weight:600}
+  .ch{margin:14px 0 4px;padding:3px 6px;background:#eee;border-radius:4px;font-weight:600} body.dark .ch{background:#333}
+  #hb{position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:20;display:flex;gap:6px;align-items:center;background:#fffe;border:1px solid #bbb;border-radius:10px;padding:4px 8px;box-shadow:0 2px 10px #0003}
+  body.dark #hb{background:#222e;border-color:#555}
+</style>
+
+<div id="bar">
+  <button id="tnav" title="Show/hide the left panel (pages, bookmarks, notes)">◧</button>
+  <button id="tbar" title="Collapse/expand this toolbar">▔</button>
+  <button id="open">Open PDF…</button>
+  <select id="lib" title="Working copies in books/"></select>
+  <button id="prev">◀</button>
+  <input id="pn" value="1"> / <span id="tot">–</span>
+  <button id="next">▶</button>
+  <button id="zo">−</button><button id="zi">+</button>
+  <select id="cols" title="Pages per row — overview of many pages at once. Click a page number to zoom to it."><option value="1">1 / row</option><option>2</option><option>3</option><option>4</option><option>6</option><option>8</option></select>
+  <span style="width:12px"></span>
+  <select id="theme" title="Page tint"><option value="">Light</option><option value="sepia">Sepia</option><option value="dark">Dark</option></select>
+  <button id="t-scroll" title="Touch screens: ON = finger scrolls the pages; OFF = finger/Pencil draws and highlights">✋ Scroll</button>
+  <button id="t-hl" class="on" title="Drag across text to highlight; click a highlight to remove it">▮ Highlight</button>
+  <select id="hcol">
+    
+  </select>
+  <button id="kedit" title="Choose highlight colours and what each one means">🎨</button>
+  <button id="t-type" title="Drag a region, then type">⌨ Type note</button>
+  <button id="t-crop" title="Drag a region of the page to copy it as a picture you can move/resize. You can also paste a screenshot with ⌘V.">✂ Crop</button>
+  <button id="t-pen" title="Handwrite; attaches to the region it starts in">✎ Handwrite</button>
+  <input type="color" id="col" value="#1a3fd0">
+  <select id="pst" title="Pen style"><option value="pen">Pen</option><option value="marker">Marker</option><option value="hi">Highlighter</option></select>
+  <select id="shp" title="Draw a shape instead of freehand (uses the Handwrite tool)"><option value="">Freehand</option><option value="line">╲ Line</option><option value="arrow">➘ Arrow</option><option value="darrow">⤡ Double arrow</option><option value="rect">▭ Rectangle</option><option value="ellipse">⬭ Ellipse</option><option value="tri">△ Triangle</option><option value="dia">◇ Diamond</option></select>
+  <button id="t-lasso" title="Drag a loop around notes/pictures/drawings to select them; drag the selection to move it, Delete removes it">◌ Lasso</button>
+  <button id="t-space" title="Press where you want room, drag down: everything below on this page moves down">⇳ Insert space</button>
+  <button id="t-erase" title="Drag over handwriting / shapes to erase them">⌫ Eraser</button>
+  <button id="undo" title="⌘Z">Undo stroke</button>
+  <button id="bmq" title="Bookmark this page (⌘D)">☆ Bookmark</button>
+  <label><input type="checkbox" id="all"> all pages</label>
+  <button id="del" title="Delete the current page (notes on it go too)">Delete page</button>
+  <span title="Blank margin on the right for notes, as % of the page width. 0 removes it. Costs no file size."><input id="mpc" type="number" min="0" max="300" step="5" value="33" style="width:52px">%
+    <button id="mpg" title="Set the margin on this page">▥ Margin: page</button><button id="mal" title="Set the margin on every page">all</button></span>
+  <button id="addb">+ Blank after</button>
+  <button id="addp">+ PDF pages after…</button>
+  <button id="rest" title="Restore PDF + notes from before the last page edit" hidden>Undo page edit</button>
+  <button id="bib" title="Title / authors / DOI / citation key for this book">ⓘ Book info</button>
+  <button id="libb" title="All highlights + comments from every book, searchable">📚 Library</button>
+  <select id="nup" title="Export the whole book as a small n-up PDF (many pages per sheet, text stays sharp)"><option value="">Export n-up PDF…</option><option value="2x2">2×2 · 4 per sheet</option><option value="3x3">3×3 · 9 per sheet</option><option value="4x4">4×4 · 16 per sheet</option><option value="4x8">4×8 · 32 per sheet</option></select>
+  <button id="revb" title="Quiz yourself on highlights that are due today">🧠 Review</button>
+  <button id="srch" title="Search text in the book and in your notes (⌘F)">🔍 Search</button>
+  <select id="ocr" title="Make a scanned book searchable (adds a text layer to pages that have none)"><option value="">OCR scanned pages…</option><option value="eng">English</option><option value="hin+eng">Hindi + English</option><option value="san+hin+eng">Sanskrit + Hindi + English</option></select>
+  <select id="optz" title="Shrink the file. Your notes, highlights and bookmarks are kept."><option value="">Optimize file…</option><option value="lossless">Lossless (same quality, drops waste)</option><option value="small">Smaller (images capped at 150 dpi)</option></select>
+  <button id="exp">Export PDF with notes</button>
+  <span id="st"></span>
+  <button id="tside" title="Show/hide the right panel (comments)">◨</button>
+</div>
+<div id="main">
+  <div id="nav">
+    <div id="tabs"><button id="tab-th" class="on">Pages</button><button id="tab-bm">Bookmarks</button><button id="tab-nt">Notes</button></div>
+    <div id="thumbs"></div>
+    <div id="nts" hidden>
+      <button id="cpall" title="Copy every highlight + comment, in page order">Copy all</button>
+      <div id="ntl"></div>
+    </div>
+    <div id="bms" hidden>
+      <div id="bmadd"><input id="bmt" placeholder="Title (optional)"><button id="bma" title="Bookmark the current page (⌘D)">＋</button></div>
+      <div id="bml"></div>
+    </div>
+  </div>
+  <div class="rz" id="rzn"></div>
+  <div id="view">
+    <div id="empty" hidden>Click <b>Open PDF…</b> to start.</div>
+    <div id="pages"></div>
+  </div>
+  <div class="rz" id="rzs"></div>
+  <div id="side"></div>
+</div>
+
+<dialog id="lb">
+  <div id="lbh"><input id="lq" placeholder="Search quote, comment, #tag or book…">
+    <select id="lk"></select>
+    <button id="lcp">Copy shown (Markdown)</button><button id="lex" title="Writes notes_export.md, library.bib, library.json into books/">Export .md + .bib + .json</button><button id="lx">Close</button></div>
+  <div id="ll"></div>
+</dialog>
+<div id="dock">
+  <div id="rp" hidden>
+    <button id="rpp" title="Play / pause (P)">⏸</button><button id="rpb" title="Previous page">⏮</button><button id="rpn" title="Next page">⏭</button>
+    <button id="rpr" title="Reverse direction">⇄</button>
+    <button id="rps" title="Slower">−</button><b id="rpt">8s</b><button id="rpf" title="Faster">+</button>
+    <select id="rpk" title="Which pages to cycle through"></select>
+    <label title="Read the highlights and comments aloud (Hindi voice for Devanagari)"><input type="checkbox" id="rpa"> 🔊</label>
+    <span id="rpi" style="color:#777"></span><button id="rpx">✕</button>
+  </div>
+  <div id="dk">
+    <button id="tmb" title="Study timer — start/pause. Logged per book.">⏱ <span id="tmv">00:00:00</span> ▶</button>
+    <button id="stb" title="Study log: today, streak, per book">📊</button>
+    <button id="rapb" title="Rapid revision: auto-flip through your marked pages">▶ Rapid</button>
+    <button id="pstb" title="Paste clipboard as a note on this page (⌘⇧V)">📋 Paste note</button>
+  </div>
+</div>
+<dialog id="sd"><h3 style="margin-top:0">Study log</h3><div id="sdb"></div><p><button id="sdx">Close</button></p></dialog>
+<dialog id="rv" style="width:720px;height:70vh">
+  <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
+    <select id="rs"><option value="book">This book</option><option value="all">All books</option></select>
+    <select id="rk"></select>
+    <span id="rn" style="flex:1;color:#777"></span>
+    <button id="ranki" title="Writes anki_cloze.txt + anki_basic.txt into books/ for Anki's File → Import">Export Anki</button>
+    <button id="rx">Close</button></div>
+  <div id="rc" style="height:calc(100% - 130px);overflow:auto;font-size:18px;line-height:1.5;padding:12px;border:1px solid #ddd;border-radius:8px"></div>
+  <div id="rb" style="display:flex;gap:6px;margin-top:10px;justify-content:center;flex-wrap:wrap"></div>
+</dialog>
+<dialog id="kd">
+  <h3 style="margin-top:0">Highlight colours</h3>
+  <div id="krows"></div>
+  <p style="color:#777;margin:6px 0">Pick a colour and say what it means. Highlights already made keep their colour.</p>
+  <button id="kadd">+ Colour</button> <button id="ksave">Save</button> <button id="kx">Close</button>
+</dialog>
+<dialog id="sr">
+  <div id="srh" style="display:flex;gap:6px;margin-bottom:8px">
+    <input id="sq" style="flex:1" placeholder="Phrases separated by commas — e.g. heart failure, ACE inhibitor, MI">
+    <select id="ss"><option value="book">This book</option><option value="all">All indexed books</option></select>
+    <button id="sx">Close</button></div>
+  <div id="so">
+    <select id="smode" title="any = a sentence with any phrase; all = only pages containing every phrase"><option value="any">any phrase</option><option value="all">all phrases on page</option></select>
+    <label><input type="checkbox" id="scase"> Aa case</label>
+    <label><input type="checkbox" id="swhole"> whole word</label>
+    <label>context <select id="sctx"><option value="0">none</option><option value="1" selected>±1</option><option value="2">±2</option></select></label>
+    <button id="sclr" title="Remove the search highlights from the pages">Clear page highlights</button>
+  </div>
+  <div id="sch"></div>
+  <div id="sm" style="color:#777;margin-bottom:6px"></div>
+  <div id="sl" style="overflow:auto;flex:1"></div>
+</dialog>
+<div id="hb" hidden><span id="hbc"></span><button id="hp">◀</button><b id="hn"></b><button id="hx2">▶</button><button id="hc" title="Clear search highlights">✕</button></div>
+<dialog id="bi">
+  <h3 style="margin-top:0">Book info</h3>
+  <div id="bif"></div>
+  <p style="color:#777;margin:6px 0">Authors as <i>Last, First and Last, First</i>. Fetch fills the rest from the DOI (free Crossref lookup).</p>
+  <button id="bis">Save</button> <button id="bix">Close</button> <span id="bim"></span>
+</dialog>
+
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="PDF Notes"><script src="vendor/pdf.min.js"></script><script src="vendor/pdf-lib.min.js"></script><script src="shim.js"></script><script>
+const $ = id => document.getElementById(id);
+const DK = [['#ffe14d', 'key fact'], ['#7ddf64', 'exam'], ['#ff9ac1', 'doubt'], ['#7cc7ff', 'definition']];
+let prefs = {kinds: DK.map(k => [...k]), pg: {}, at: {}, theme: ''}, meta = {}, st = {}, toc = [], notes = [], sizes = [], cur = 0, tool = 'hl', act = null, tmp = null, width = 900, timer, ver = 0, raf = 0, sure = 0;
+const pgs = [], wordsP = {};
+let sh = null, shFil = new Set(), shLast = null; // sh: live search overlay {q, pages, list, rects}
+const SC = ['#ffe14d', '#7cc7ff', '#7ddf64', '#ff9ac1', '#ffb454', '#c3a6ff'];
+const api = (u, b) => fetch(u, {method: 'POST', headers: {'X-App': '1'}, body: JSON.stringify(b || {})}).then(r => r.json());
+const setImg = window.setImg || ((img, kind, i) => { img.src = `/${kind}/${i}.png?v=${ver}`; }); // iPad build renders pages itself
+const status = t => { $('st').textContent = t; };
+const sorted = () => notes.slice().sort((a, b) => a.page - b.page || a.id - b.id);
+const area = r => (r[2] - r[0]) * (r[3] - r[1]);
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const inside = (r, p) => p[0] >= r[0] && p[0] <= r[2] && p[1] >= r[1] && p[1] <= r[3];
+
+// lazy-load page images as they approach the viewport
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  const img = e.target.querySelector('img');
+  if (!img.src) setImg(img, 'page', e.target.dataset.i);
+  if (sh) loadHits(+e.target.dataset.i);
+}), {root: $('view'), rootMargin: '1500px 0px'});
+
+const thumbIO = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  const img = e.target.querySelector('img');
+  if (!img.src) setImg(img, 'thumb', e.target.dataset.i);
+}), {root: $('thumbs'), rootMargin: '400px 0px'});
+function renderThumbs() {
+  const host = $('thumbs');
+  host.innerHTML = ''; thumbIO.disconnect();
+  sizes.forEach(([w, h], i) => {
+    const d = document.createElement('div');
+    d.className = 'th'; d.dataset.i = i; d.style.aspectRatio = w + '/' + h;
+    d.innerHTML = `<img alt=""><span>${i + 1}</span>`;
+    d.onclick = () => go(i);
+    host.appendChild(d); thumbIO.observe(d);
+  });
+  markThumbs();
+}
+function markThumbs() {
+  const bp = new Set(toc.map(e => e[2] - 1));
+  [...$('thumbs').children].forEach((d, i) => {
+    d.classList.toggle('cur', i === cur);
+    let b = d.querySelector('b');
+    if (bp.has(i) && !b) { b = document.createElement('b'); b.textContent = '★'; d.appendChild(b); }
+    else if (!bp.has(i) && b) b.remove();
+  });
+  const t = $('thumbs').children[cur];
+  if (t && !$('thumbs').hidden) t.scrollIntoView({block: 'nearest'});
+}
+function renderBm() {
+  const el = $('bml');
+  el.innerHTML = toc.length ? '' : '<p style="color:#777">No bookmarks yet. Press ＋ or ⌘D to bookmark the page you are on.</p>';
+  toc.forEach((e, i) => {
+    const d = document.createElement('div');
+    d.className = 'bm'; d.style.paddingLeft = (4 + (e[0] - 1) * 12) + 'px';
+    d.innerHTML = `<span class="t" title="${esc(e[1])} (double-click to rename)">${esc(e[1])}</span><small>${e[2]}</small><button title="Delete">✕</button>`;
+    d.onclick = ev => { if (ev.target.tagName === 'BUTTON') bm({op: 'del', index: i}); else go(e[2] - 1); };
+    const t = d.querySelector('.t');
+    t.ondblclick = ev => {
+      ev.stopPropagation(); t.contentEditable = true; t.focus();
+      t.onkeydown = k => { if (k.key === 'Enter') { k.preventDefault(); t.blur(); } };
+      t.onblur = () => { t.contentEditable = false; const v = t.textContent.trim(); if (v && v !== e[1]) bm({op: 'rename', index: i, title: v}); else renderBm(); };
+    };
+    el.appendChild(d);
+  });
+}
+async function bm(q) {
+  toc = (await api('/api/bookmark', q)).toc;
+  renderBm(); markThumbs();
+}
+// a highlight and its comment travel as one unit: quote + comment
+const kind = c => (prefs.kinds.find(k => k[0] === c) || [])[1] || '';
+let prefT = 0;
+const savePrefs = () => { clearTimeout(prefT); prefT = setTimeout(() => api('/api/prefs', prefs), 800); };
+function fillColours() {
+  const opts = prefs.kinds.map(([c, k]) => `<option value="${c}">${esc(k)}</option>`).join('');
+  const keep = $('hcol').value;
+  $('hcol').innerHTML = opts; if (prefs.kinds.some(k => k[0] === keep)) $('hcol').value = keep;
+  const lk = $('lk').value;
+  $('lk').innerHTML = '<option value="">All colours</option>' + opts; $('lk').value = lk;
+}
+const parseTags = v => v.split(',').map(t => t.trim().replace(/\s+/g, '-').replace(/^#/, '')).filter(Boolean);
+const cite = n => meta.citekey ? `[@${meta.citekey}, p. ${n.page + 1}]` : `(p. ${n.page + 1})`;
+const unit = n => `${n.quote ? '"' + n.quote + '" ' : ''}${cite(n)}` + (n.text ? '\n→ ' + n.text : '');
+const units = () => sorted().filter(n => n.quote || n.text);
+const copy = async (t, b) => {
+  await navigator.clipboard.writeText(t);
+  const o = b.textContent; b.textContent = 'copied ✓'; setTimeout(() => { b.textContent = o; }, 1200);
+};
+function renderNotes() {
+  if ($('nts').hidden) return;
+  const el = $('ntl'), m = nums();
+  el.innerHTML = '';
+  units().forEach(n => {
+    const d = document.createElement('div');
+    d.className = 'u'; d.style.setProperty('--c', n.hc || '#e6a800');
+    d.innerHTML = `<button title="Copy highlight + comment">Copy</button><small>${n.hl ? kind(n.hc) || 'highlight' : '#' + m[n.id]} · p.${n.page + 1}</small>`
+      + (n.quote ? `<p class="q">${esc(n.quote)}</p>` : '') + (n.text ? `<p>${esc(n.text)}</p>` : '') + (n.tags && n.tags.length ? `<small class="tags">${esc(n.tags.map(t => '#' + t).join(' '))}</small>` : '');
+    d.onclick = e => {
+      if (e.target.tagName === 'BUTTON') return copy(unit(n), e.target);
+      act = n.id; drawAll(); go(n.page); side();
+    };
+    el.appendChild(d);
+  });
+  if (!el.children.length) el.innerHTML = '<p style="color:#777">No highlights or comments yet.</p>';
+}
+function navTab(t) {
+  $('thumbs').hidden = t !== 'th'; $('bms').hidden = t !== 'bm'; $('nts').hidden = t !== 'nt';
+  ['th', 'bm', 'nt'].forEach(k => $('tab-' + k).classList.toggle('on', k === t));
+  $('nav').classList.toggle('wide', t === 'nt');
+  if (t === 'th') markThumbs();
+  renderNotes();
+}
+function setCur(c) {
+  cur = c; $('pn').value = c + 1; markThumbs();
+  if (st.open) { prefs.pg[st.name] = c; prefs.at[st.name] = Date.now(); savePrefs(); }
+  if (!$('all').checked) side();
+  hbUpdate();
+}
+
+var boot = async function boot(s, keep) {
+  st = s || await (await fetch('/api/state')).json();
+  prefs = {...prefs, ...(st.prefs || {})}; fillColours(); setTheme(prefs.theme || '');
+  $('lib').innerHTML = '<option value="">Books…</option>' + (st.books || []).map(b => `<option${b === st.name ? ' selected' : ''}>${esc(b)}</option>`).join('');
+  $('rest').hidden = !st.bak;
+  $('empty').hidden = st.open;
+  if (!st.open) startScreen();
+  $('pages').hidden = !st.open;
+  if (!st.open) return;
+  sh = null; $('hb').hidden = true;
+  notes = st.notes || []; meta = st.meta || {}; sizes = st.sizes; toc = st.toc || []; act = null; ver++;
+  document.title = st.name + ' – PDF Notes';
+  $('tot').textContent = st.pages;
+  const host = $('pages');
+  host.innerHTML = ''; pgs.length = 0; io.disconnect();
+  for (const k in wordsP) delete wordsP[k];
+  sizes.forEach(([w, h], i) => {
+    const d = document.createElement('div');
+    d.className = 'pg'; d.dataset.i = i; d.style.aspectRatio = w + '/' + h;
+    d.innerHTML = `<img alt=""><svg viewBox="0 0 1000 ${1000 * h / w}" class="${tool}"></svg><span class="lbl">${i + 1}</span>`;
+    wire(d.querySelector('svg'), i);
+    host.appendChild(d); pgs.push(d); io.observe(d);
+  });
+  drawAll(); side(); renderThumbs(); renderBm(); renderNotes();
+  go(Math.min(keep ?? (prefs.pg[st.name] || 0), st.pages - 1)); // resume where you left off
+}
+function startScreen() {
+  const last = n => prefs.pg[n] || 0, seen = n => prefs.at[n] || 0;
+  const bs = (st.books || []).slice().sort((a, b) => seen(b) - seen(a) || a.localeCompare(b));
+  $('empty').innerHTML = '<h2>PDF Notes</h2>' + (bs.length ? '<p>Continue reading:</p>' : '') + '<div id="rec"></div><p><button id="open2">Open PDF…</button></p>';
+  bs.forEach(n => {
+    const b = document.createElement('button');
+    b.style.cssText = 'display:block;margin:6px auto;min-width:360px;text-align:left';
+    b.textContent = n.replace(/\.pdf$/, '').slice(0, 70) + (last(n) ? '  ·  p.' + (last(n) + 1) : '');
+    b.onclick = async () => boot(await api('/api/openbook', {name: n}));
+    $('rec').appendChild(b);
+  });
+  $('open2').onclick = () => $('open').click();
+}
+function go(p) {
+  if (!st.open) return;
+  p = Math.min(st.pages - 1, Math.max(0, p));
+  const v = $('view');
+  v.scrollTop += pgs[p].getBoundingClientRect().top - v.getBoundingClientRect().top - 12;
+  setCur(p);
+}
+$('view').onscroll = () => {
+  if (raf) return;
+  raf = requestAnimationFrame(() => {
+    raf = 0;
+    const v = $('view'), y = v.getBoundingClientRect().top + v.clientHeight / 3;
+    let c = cur; // walk from the current page: O(1) per frame even in a 4000-page book
+    while (c > 0 && pgs[c].getBoundingClientRect().top > y) c--;
+    while (c < pgs.length - 1 && pgs[c].getBoundingClientRect().bottom < y) c++;
+    if (c !== cur) setCur(c);
+  });
+};
+
+let dirty = false;
+function save() {
+  status('saving…'); clearTimeout(timer); renderNotes(); dirty = true;
+  timer = setTimeout(async () => {
+    dirty = false;
+    const r = await api('/api/notes', notes);
+    status(r.pdf === false ? 'saved to notes file; PDF write failed: ' + r.err : 'saved ✓ (in PDF)');
+  }, 400);
+}
+function pt(e, s) {
+  const b = s.getBoundingClientRect();
+  return [Math.min(1, Math.max(0, (e.clientX - b.left) / b.width)), Math.min(1, Math.max(0, (e.clientY - b.top) / b.height))];
+}
+function nums() { let k = 0; const m = {}; sorted().forEach(n => { if (!n.hl) m[n.id] = ++k; }); return m; }
+function draw(i, m = nums()) {
+  const s = pgs[i].querySelector('svg'), H = 1000 * sizes[i][1] / sizes[i][0];
+  const poly = (pts, c, w = 2.2, o = 1) => `<polyline fill="none" stroke="${c}" stroke-opacity="${o}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" points="${pts.map(p => (p[0] * 1000).toFixed(1) + ',' + (p[1] * H).toFixed(1)).join(' ')}"/>`;
+  const box = (r, extra) => `<rect x="${r[0] * 1000}" y="${r[1] * H}" width="${(r[2] - r[0]) * 1000}" height="${(r[3] - r[1]) * H}" ${extra}/>`;
+  let h = '';
+  if (sh && sh.rects[i]) sh.rects[i].forEach(r => h += box(r, `fill="${SC[r[4] % SC.length]}" fill-opacity=".6" style="mix-blend-mode:multiply" stroke="#d33" stroke-width="1"`));
+  sorted().forEach(n => {
+    if (n.page !== i) return;
+    const on = n.id === act;
+    if (n.pic) {
+      const r = n.rect;
+      h += `<image href="${n.pic}" x="${r[0] * 1000}" y="${r[1] * H}" width="${(r[2] - r[0]) * 1000}" height="${(r[3] - r[1]) * H}" preserveAspectRatio="none"/>`;
+      if (on) h += box(r, 'fill="none" stroke="#e6a800" stroke-width="1.5" stroke-dasharray="6 4"')
+        + `<rect x="${r[2] * 1000 - 9}" y="${r[3] * H - 9}" width="18" height="18" fill="#e6a800" stroke="#fff"/>`;
+    } else if (n.hl) {
+      n.hl.forEach(r => h += box(r, `fill="${n.hc}" fill-opacity=".5" style="mix-blend-mode:multiply" stroke="${on ? '#333' : 'none'}" stroke-width="1.2"`));
+    } else {
+      h += box(n.rect, `fill="rgba(255,214,0,${on ? .28 : .14})" stroke="#e6a800" stroke-width="${on ? 2.5 : 1.2}"`);
+      h += `<text x="${n.rect[0] * 1000 + 3}" y="${Math.max(15, n.rect[1] * H - 4)}" font-size="16" font-weight="700" fill="#a67700">${m[n.id]}</text>`;
+    }
+    n.ink.forEach(k => h += poly(k.pts, k.c, k.w, k.o));
+  });
+  const sb = selBox(i);
+  if (sb) h += box(sb, 'fill="rgba(60,120,255,.08)" stroke="#3c78ff" stroke-width="1.5" stroke-dasharray="5 4"');
+  if (tmp && tmp.i === i && tmp.k === 'lasso') h += poly(tmp.pts, '#3c78ff', 1.5, 1).replace('fill="none"', 'fill="rgba(60,120,255,.1)" stroke-dasharray="5 4"');
+  else if (tmp && tmp.i === i && tmp.k !== 'lmove' && tmp.k !== 'space') {
+    if (tmp.k === 'pen') h += poly(tmp.pts, $('col').value, ...penStyle());
+    else h += box(tmp.r, `fill="${tool === 'hl' ? $('hcol').value : 'rgba(255,214,0,.2)'}" fill-opacity=".35" stroke="#888" stroke-dasharray="6 4" stroke-width="1.2"`);
+  }
+  s.innerHTML = h;
+}
+function drawAll() { const m = nums(); pgs.forEach((_, i) => draw(i, m)); }
+
+let fold = 'auto', lastAct = null;   // auto: only the active note is open
+function side() {
+  const all = $('all').checked, el = $('side'), m = nums();
+  if (act !== lastAct) { lastAct = act; if (act) fold = 'auto'; }   // a new highlight collapses the rest
+  el.innerHTML = '';
+  if (notes.length) {
+    const f = document.createElement('div'); f.id = 'fold';
+    f.innerHTML = '<button id="fo">Open all</button><button id="fc">Close all</button>';
+    f.querySelector('#fo').onclick = () => { fold = 'open'; side(); };
+    f.querySelector('#fc').onclick = () => { fold = 'closed'; act = null; lastAct = null; drawAll(); side(); };
+    el.appendChild(f);
+  }
+  sorted().forEach(n => {
+    if (!all && n.page !== cur) return;
+    const d = document.createElement('div');
+    d.className = 'note' + (n.id === act ? ' act' : '') + (fold === 'open' || (fold === 'auto' && n.id === act) ? '' : ' c');
+    const tag = n.hl ? `<span style="background:${n.hc};padding:0 6px;border-radius:3px">&nbsp;</span> ${kind(n.hc) || 'highlight'}` : '#' + m[n.id];
+    d.innerHTML = `<div class="nh"><b>${tag} <small>p.${n.page + 1}${n.ink.length ? ' · ✎ ' + n.ink.length : ''}</small></b><span><button class="cp" title="Copy highlight + comment">⧉</button> <button class="rm">🗑</button></span></div>`
+      + (n.hl && n.quote ? `<p class="q" style="--c:${n.hc}">${esc(n.quote.slice(0, 220))}</p>` : '')
+      + `<textarea placeholder="${n.hl ? 'Comment (optional)…' : 'Type a note…'}"></textarea><input class="tg" placeholder="tags, comma separated">`
+      + (n.hl ? `<select class="kc" title="Change meaning / colour">${(prefs.kinds.some(k => k[0] === n.hc) ? prefs.kinds : [[n.hc, 'custom'], ...prefs.kinds]).map(([c, k]) => `<option value="${c}"${c === n.hc ? ' selected' : ''}>${k}</option>`).join('')}</select>` : '');
+    const ta = d.querySelector('textarea');
+    ta.value = n.text;
+    ta.oninput = () => { n.text = ta.value; save(); };
+    const kc = d.querySelector('.kc');
+    if (kc) kc.onchange = () => { n.hc = kc.value; save(); drawAll(); side(); };
+    const tg = d.querySelector('.tg');
+    tg.value = (n.tags || []).join(', ');
+    tg.oninput = () => { n.tags = parseTags(tg.value); save(); };
+    ta.onfocus = () => { if (act !== n.id) { act = n.id; drawAll(); } };
+    d.querySelector('.nh').onclick = e => {
+      if (e.target.classList.contains('cp')) return copy(unit(n) || '#' + m[n.id], e.target);
+      if (e.target.classList.contains('rm')) {
+        if (n.hl && (n.text || n.ink.length)) { delete n.hl; delete n.hc; save(); drawAll(); side(); return; }  // drop the highlight, keep the comment
+        if (n.text || n.ink.length) { if (!e.target.dataset.sure) { e.target.dataset.sure = 1; e.target.textContent = 'sure?'; return; } }
+        notes = notes.filter(x => x !== n); act = null; save(); drawAll(); side(); return;
+      }
+      fold = 'auto'; act = n.id; drawAll();
+      if (n.page !== cur) go(n.page); else side();
+    };
+    el.appendChild(d);
+  });
+  if (el.children.length < 2) el.innerHTML = '<p style="color:#777">Nothing on this page yet.<br><b>Highlight</b>: drag across text. <b>Type note</b>: drag a region. <b>Handwrite</b>: just draw.</p>';
+}
+function containing(i, p, withHl) {
+  return notes.filter(n => n.page === i && (withHl || !n.hl) && (n.hl ? n.hl.some(r => inside(r, p)) : inside(n.rect, p)))
+              .sort((a, b) => area(a.rect) - area(b.rect))[0];
+}
+const union = rs => [Math.min(...rs.map(r => r[0])), Math.min(...rs.map(r => r[1])), Math.max(...rs.map(r => r[2])), Math.max(...rs.map(r => r[3]))];
+function getWords(i) {
+  return wordsP[i] || (wordsP[i] = fetch('/api/words/' + i).then(r => r.json()).catch(() => []));
+}
+async function highlight(i, t) {
+  const w = await getWords(i);
+  const near = p => {
+    let bi = -1, bd = 9;
+    w.forEach((q, k) => {
+      const d = Math.hypot(Math.max(q[0] - p[0], 0, p[0] - q[2]), Math.max(q[1] - p[1], 0, p[1] - q[3]));
+      if (d < bd) { bd = d; bi = k; }
+    });
+    return [bi, bd];
+  };
+  const [a, da] = near(t.p0), [b, db] = near(t.p);
+  let rects, quote = '';
+  if (a >= 0 && da < .03 && db < .03) { // snap to the words between press and release, like text selection
+    const lines = new Map();
+    w.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(q => {
+      const r = lines.get(q[4]);
+      lines.set(q[4], r ? [Math.min(r[0], q[0]), Math.min(r[1], q[1]), Math.max(r[2], q[2]), Math.max(r[3], q[3])] : q.slice(0, 4));
+      quote += (quote ? ' ' : '') + q[5];
+    });
+    rects = [...lines.values()];
+  } else if (t.r[2] - t.r[0] > .01 && t.r[3] - t.r[1] > .01) rects = [t.r]; // scanned page: plain box
+  else return;
+  const n = {id: Date.now(), page: i, text: '', ink: [], hl: rects, hc: $('hcol').value, quote, rect: union(rects)};
+  notes.push(n); act = n.id; save(); draw(i); side();
+}
+function wire(s, i) {
+  s.onpointerdown = e => {
+    s.setPointerCapture(e.pointerId);
+    const p = pt(e, s);
+    if (tool === 'erase') { tmp = {k: 'erase', i}; eraseAt(i, p); return; }
+    if (tool === 'space') { tmp = {k: 'space', i, y0: p[1], last: p[1]}; return; }
+    if (tool === 'lasso') {
+      const b = selBox(i);
+      if (b && inside(b, p)) tmp = {k: 'lmove', i, last: p};
+      else { sel = []; tmp = {k: 'lasso', i, pts: [p]}; drawAll(); }
+      return;
+    }
+    const pic = notes.filter(n => n.pic && n.page === i && inside(n.rect, p)).pop();
+    if (pic) { // pictures move / resize whatever the tool is
+      const r = pic.rect, big = Math.hypot(p[0] - r[2], (p[1] - r[3]) * sizes[i][1] / sizes[i][0]) < .02;
+      act = pic.id; drawAll(); side();
+      tmp = {k: big ? 'size' : 'move', i, n: pic, g: [p[0] - r[0], p[1] - r[1]], w: r[2] - r[0], h: r[3] - r[1]};
+      return;
+    }
+    tmp = tool === 'pen' ? {k: 'pen', i, pts: [p], p0: p, sh: $('shp').value} : {k: 'rect', i, p0: p, p, r: [...p, ...p]};
+  };
+  s.onpointermove = e => {
+    if (!tmp || tmp.i !== i) return;
+    if (tmp.k === 'move' || tmp.k === 'size') {
+      const n = tmp.n, old = n.page, r = n.rect;
+      if (tmp.k === 'size') {
+        const w = Math.max(.03, pt(e, pgs[old].querySelector('svg'))[0] - r[0]);
+        n.rect = [r[0], r[1], r[0] + w, r[1] + w * tmp.h / tmp.w]; // keeps the aspect ratio
+      } else {
+        let j = pgs.findIndex(g => { const b = g.getBoundingClientRect(); return e.clientY >= b.top && e.clientY <= b.bottom; });
+        if (j < 0) j = old;
+        const p = pt(e, pgs[j].querySelector('svg')), x = Math.min(1 - tmp.w, Math.max(0, p[0] - tmp.g[0])), y = Math.min(1 - tmp.h, Math.max(0, p[1] - tmp.g[1]));
+        n.page = j; n.rect = [x, y, x + tmp.w, y + tmp.h];
+        if (j !== old) draw(old);
+      }
+      draw(n.page); return;
+    }
+    const p = pt(e, s);
+    if (tmp.k === 'erase') return eraseAt(i, p);
+    if (tmp.k === 'lasso') { tmp.pts.push(p); return draw(i); }
+    if (tmp.k === 'lmove') { moveSel(i, p[0] - tmp.last[0], p[1] - tmp.last[1]); tmp.last = p; return draw(i); }
+    if (tmp.k === 'space') { spaceFrom(i, tmp.y0, p[1] - tmp.last); tmp.last = p[1]; return draw(i); }
+    if (tmp.k === 'pen' && tmp.sh) tmp.pts = shapePts(tmp.sh, tmp.p0, p, i);
+    else if (tmp.k === 'pen') tmp.pts.push(p);
+    else { tmp.p = p; tmp.r = [Math.min(tmp.p0[0], p[0]), Math.min(tmp.p0[1], p[1]), Math.max(tmp.p0[0], p[0]), Math.max(tmp.p0[1], p[1])]; }
+    draw(i);
+  };
+  s.onpointerup = async () => {
+    if (!tmp || tmp.i !== i) return;
+    const t = tmp; tmp = null;
+    if (t.k === 'lasso') {
+      const c = n => [(n.rect[0] + n.rect[2]) / 2, (n.rect[1] + n.rect[3]) / 2];
+      const hit = (q, P) => { let o = false; for (let a = 0, b = P.length - 1; a < P.length; b = a++) if ((P[a][1] > q[1]) !== (P[b][1] > q[1]) && q[0] < (P[b][0] - P[a][0]) * (q[1] - P[a][1]) / (P[b][1] - P[a][1]) + P[a][0]) o = !o; return o; };
+      sel = t.pts.length > 2 ? notes.filter(n => n.page === i && hit(c(n), t.pts)).map(n => n.id) : [];
+      drawAll(); return;
+    }
+    if (t.k === 'lmove' || t.k === 'space') { save(); drawAll(); side(); return; }
+    if (t.k === 'move' || t.k === 'size' || t.k === 'erase') { save(); drawAll(); side(); return; }
+    const tiny = t.k === 'rect' && t.r[2] - t.r[0] < .01 && t.r[3] - t.r[1] < .01;
+    if (t.k === 'pen') {
+      if (t.pts.length > 1) {
+        const xs = t.pts.map(p => p[0]), ys = t.pts.map(p => p[1]);
+        const bb = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+        let n = containing(i, t.pts[0], false);
+        if (n) n.rect = union([n.rect, bb]);
+        else {
+          n = {id: Date.now(), page: i, text: '', ink: [], rect: [Math.max(0, bb[0] - .01), Math.max(0, bb[1] - .01), Math.min(1, bb[2] + .01), Math.min(1, bb[3] + .01)]};
+          notes.push(n);
+        }
+        n.ink.push({c: $('col').value, pts: t.pts, w: penStyle()[0], o: penStyle()[1]});
+        act = n.id; save(); drawAll(); side();
+      } else draw(i);
+    } else if (tool === 'hl') {
+      const h = tiny && containing(i, t.p0, true);
+      if (h && h.hl) { // click on an existing highlight: remove it; a comment/ink on it stays as a plain note
+        if (h.text || h.ink.length) { delete h.hl; delete h.hc; act = h.id; } else { notes = notes.filter(x => x !== h); act = null; }
+        save(); drawAll(); side();
+      } else { draw(i); await highlight(i, t); }
+    } else if (tool === 'crop') {
+      if (!tiny) cropPic(i, t.r);
+      else draw(i);
+    } else if (!tiny) {
+      const n = {id: Date.now(), page: i, text: '', ink: [], rect: t.r};
+      notes.push(n); act = n.id; save(); draw(i); side();
+      const c = [...$('side').children].find(c => c.classList.contains('act'));
+      if (c) c.querySelector('textarea').focus();
+    } else {
+      const n = containing(i, t.p0, true);
+      act = n ? n.id : null; drawAll(); side();
+    }
+  };
+}
+function shrink(c) { // JPEG q.8, max 1400 px wide, on white: text stays readable, ~5-10x smaller than PNG
+  const k = Math.min(1, 1400 / c.width), o = document.createElement('canvas');
+  o.width = Math.round(c.width * k); o.height = Math.round(c.height * k);
+  const x = o.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, o.width, o.height); x.drawImage(c, 0, 0, o.width, o.height);
+  return o.toDataURL('image/jpeg', .8);
+}
+async function picOcr(n) {
+  if (n.ocr || !notes.includes(n)) return;
+  const r = await api('/api/picocr', {pic: n.pic});
+  if (!notes.includes(n)) return;
+  n.ocr = true;
+  if (r.text && !n.text) { n.text = r.text; status('picture text read (OCR)'); }
+  save(); side();
+}
+const penStyle = () => ({pen: [2.2, 1], marker: [7, .55], hi: [16, .35]}[$('pst').value]);
+function shapePts(sh, a, b, i) {   // two corners -> polyline, in page fractions; y scaled so heads/ellipses are not squashed
+  const A = sizes[i][1] / sizes[i][0], P = (x, y) => [x, y / A], [x0, y0, x1, y1] = [a[0], a[1] * A, b[0], b[1] * A];
+  const L = [P(x0, y0), P(x1, y1)];
+  const head = (f, t) => { // two barbs at t pointing away from f
+    const d = Math.atan2(t[1] - f[1], t[0] - f[0]), n = .025;
+    return [P(t[0] - n * Math.cos(d - .45), t[1] - n * Math.sin(d - .45)), P(...t), P(t[0] - n * Math.cos(d + .45), t[1] - n * Math.sin(d + .45))];
+  };
+  const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+  if (sh === 'line') return L;
+  if (sh === 'arrow') return [L[0], ...head([x0, y0], [x1, y1])];
+  if (sh === 'darrow') { const A2 = head([x1, y1], [x0, y0]), B2 = head([x0, y0], [x1, y1]); return [...A2, A2[1], B2[1], ...B2]; }
+  if (sh === 'rect') return [P(x0, y0), P(x1, y0), P(x1, y1), P(x0, y1), P(x0, y0)];
+  if (sh === 'tri') return [P(mx, y0), P(x1, y1), P(x0, y1), P(mx, y0)];
+  if (sh === 'dia') return [P(mx, y0), P(x1, my), P(mx, y1), P(x0, my), P(mx, y0)];
+  return Array.from({length: 49}, (_, k) => P(mx + (x1 - x0) / 2 * Math.cos(k / 24 * Math.PI), my + (y1 - y0) / 2 * Math.sin(k / 24 * Math.PI)));
+}
+let sel = [];
+function selBox(i) {
+  const r = notes.filter(n => sel.includes(n.id) && n.page === i).map(n => n.rect);
+  return r.length ? union(r) : null;
+}
+function shiftN(n, dx, dy) {
+  const mv = r => [r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy];
+  n.rect = mv(n.rect);
+  if (n.hl) n.hl = n.hl.map(mv);
+  n.ink.forEach(k => k.pts = k.pts.map(q => [q[0] + dx, q[1] + dy]));
+}
+function moveSel(i, dx, dy) {  // the group stays on the page
+  const b = selBox(i); if (!b) return;
+  dx = Math.max(-b[0], Math.min(1 - b[2], dx)); dy = Math.max(-b[1], Math.min(1 - b[3], dy));
+  notes.filter(n => sel.includes(n.id)).forEach(n => shiftN(n, dx, dy));
+}
+function spaceFrom(i, y, dy) {  // everything whose top is below y slides down/up
+  const ns = notes.filter(n => n.page === i && n.rect[1] >= y);
+  if (!ns.length) return;
+  const lo = Math.max(...ns.map(n => -n.rect[1])), hi = Math.min(...ns.map(n => 1 - n.rect[3]));
+  dy = Math.max(lo, Math.min(hi, dy));
+  ns.forEach(n => shiftN(n, 0, dy));
+}
+document.addEventListener('keydown', e => {
+  if (!sel.length || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+  if (e.key === 'Escape') { sel = []; drawAll(); }
+  else if (e.key === 'Delete' || e.key === 'Backspace') {
+    e.preventDefault(); notes = notes.filter(n => !sel.includes(n.id)); sel = []; act = null; save(); drawAll(); side();
+  }
+});
+function eraseAt(i, p) {
+  const A = sizes[i][1] / sizes[i][0], r = .015;
+  const near = (q, u, v) => { // distance from p to segment uv (y scaled to page aspect)
+    const ux = u[0], uy = u[1] * A, dx = v[0] - ux, dy = v[1] * A - uy, px = p[0] - ux, py = p[1] * A - uy;
+    const t = dx || dy ? Math.max(0, Math.min(1, (px * dx + py * dy) / (dx * dx + dy * dy))) : 0;
+    return Math.hypot(px - t * dx, py - t * dy) < r;
+  };
+  let hit = false;
+  notes.filter(n => n.page === i && n.ink.length).forEach(n => {
+    const keep = n.ink.filter(k => !k.pts.some((u, j) => near(0, u, k.pts[j + 1] || u)));
+    if (keep.length === n.ink.length) return;
+    hit = true; n.ink = keep;
+    if (!keep.length && !n.text && !n.hl && !n.pic && !(n.tags || []).length) notes = notes.filter(x => x !== n); // empty ink-only note goes
+  });
+  if (hit) { act = null; draw(i); }
+}
+function addPic(canvas, page, w) { // canvas -> picture note on the page; w = fraction of page width
+  const W = sizes[page][0], H = sizes[page][1], h = w * canvas.height / canvas.width * W / H;
+  const x = Math.max(0, .5 - w / 2), y = Math.max(0, Math.min(1 - h, .3));
+  const n = {id: Date.now(), page, text: '', ink: [], pic: shrink(canvas), rect: [x, y, x + w, y + h]};
+  notes.push(n); act = n.id; save(); drawAll(); side();
+  setTimeout(() => picOcr(n), 3000);   // let the user place it first; then read its text in the background
+  return n;
+}
+function cropPic(i, r) {
+  const im = pgs[i].querySelector('img');
+  if (!im.naturalWidth) return status('page not loaded yet');
+  const c = document.createElement('canvas'), sx = r[0] * im.naturalWidth, sy = r[1] * im.naturalHeight;
+  c.width = Math.round((r[2] - r[0]) * im.naturalWidth); c.height = Math.round((r[3] - r[1]) * im.naturalHeight);
+  c.getContext('2d').drawImage(im, sx, sy, c.width, c.height, 0, 0, c.width, c.height);
+  const n = addPic(c, i, r[2] - r[0]);
+  const dx = Math.min(.05, 1 - r[2]), dy = Math.min(.05, 1 - r[3]); // offset so the copy is visibly separate
+  n.rect = [r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy]; save(); drawAll();
+}
+document.addEventListener('paste', e => {  // screenshot on the clipboard (⌘⇧⌃4) -> picture on the current page
+  const f = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/'));
+  if (!f || !st.open || /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+  e.preventDefault();
+  const u = URL.createObjectURL(f), im = new Image();
+  im.onload = () => {
+    const k = Math.min(1, 1600 / im.naturalWidth), c = document.createElement('canvas');
+    c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(u);
+    addPic(c, cur, Math.min(.5, Math.max(.1, im.naturalWidth / (window.devicePixelRatio || 1) / width)));
+    status('pasted picture on p.' + (cur + 1) + ' — drag to move, corner to resize, 🗑 in the side panel to delete');
+  };
+  im.src = u;
+});
+function undo() {
+  const n = notes.find(x => x.id === act);
+  if (n && n.ink.length) { n.ink.pop(); save(); drawAll(); side(); }
+}
+function setTool(t) {
+  tool = t;
+  pgs.forEach(p => { p.querySelector('svg').setAttribute('class', t); });
+  ['hl', 'type', 'pen', 'crop', 'erase', 'lasso', 'space'].forEach(k => $('t-' + k).classList.toggle('on', k === t));
+}
+function zoom(f) {
+  width = Math.min(2400, Math.max(400, width * f));
+  $('pages').style.setProperty('--w', width + 'px');
+  $('view').scrollTop *= f;
+}
+
+
+// ---- library: all books' highlights + comments, as Markdown with [@citekey, p. N] ----
+let lib = [];
+const bt = b => b.meta.title || b.book;
+const link = (b, n) => ` [open p.${n.page + 1}](${location.origin}/#b=${encodeURIComponent(b.book)}&p=${n.page + 1})`;
+const mdLine = (b, n) => `- ${n.quote ? '"' + n.quote + '" ' : ''}${b.key ? `[@${b.key}, p. ${n.page + 1}]` : `(p. ${n.page + 1})`}${kind(n.hc) ? ` _(${kind(n.hc)})_` : ''}${link(b, n)}`
+  + (n.text ? `\n  - ${n.text.replace(/\n/g, '\n    ')}` : '') + (n.tags.length ? `\n  - ${n.tags.map(t => '#' + t).join(' ')}` : '');
+const mdBook = (b, ns) => `## ${bt(b)}${b.meta.author ? ' — ' + b.meta.author : ''}${b.meta.year ? ' (' + b.meta.year + ')' : ''}\n\n${ns.map(n => mdLine(b, n)).join('\n')}\n`;
+function shown() {
+  const q = $('lq').value.trim().toLowerCase(), k = $('lk').value;
+  return lib.map(b => [b, b.notes.filter(n => (!k || n.hc === k) && (!q || (bt(b) + ' ' + n.quote + ' ' + n.text + ' ' + n.tags.map(t => '#' + t).join(' ')).toLowerCase().includes(q)))
+    .sort((x, y) => x.page - y.page || x.id - y.id)]).filter(([, ns]) => ns.length);
+}
+function renderLib() {
+  const el = $('ll'); el.innerHTML = '';
+  shown().forEach(([b, ns]) => {
+    el.insertAdjacentHTML('beforeend', `<h4>${esc(bt(b))} <small style="color:#777">${esc(b.meta.author || '')} ${esc(b.meta.year || '')} · ${esc(b.key)}</small></h4>`);
+    ns.forEach(n => {
+      const d = document.createElement('div');
+      d.className = 'u'; d.style.setProperty('--c', n.hc);
+      d.innerHTML = `<button title="Copy as Markdown">Copy</button><small>p.${n.page + 1}${kind(n.hc) ? ' · ' + kind(n.hc) : ''}</small>`
+        + (n.quote ? `<p class="q">${esc(n.quote)}</p>` : '') + (n.text ? `<p>${esc(n.text)}</p>` : '')
+        + (n.tags.length ? `<small class="tags">${esc(n.tags.map(t => '#' + t).join(' '))}</small>` : '');
+      d.onclick = async e => {
+        if (e.target.tagName === 'BUTTON') return copy(mdLine(b, n), e.target);
+        $('lb').close();
+        if (b.book !== st.name) await boot(await api('/api/openbook', {name: b.book}), n.page); else go(n.page);
+        act = n.id; drawAll(); side();
+      };
+      el.appendChild(d);
+    });
+  });
+  if (!el.children.length) el.innerHTML = '<p style="color:#777">Nothing matches.</p>';
+}
+$('libb').onclick = async () => {
+  if (st.open) await api('/api/notes', notes); // flush pending edits so the library is current
+  lib = await api('/api/library'); $('lq').value = ''; renderLib(); $('lb').showModal();
+};
+$('lq').oninput = renderLib; $('lk').onchange = renderLib;
+$('lx').onclick = () => $('lb').close();
+$('lcp').onclick = e => copy(shown().map(([b, ns]) => mdBook(b, ns)).join('\n'), e.target);
+$('lex').onclick = async e => {
+  const r = await api('/api/export_all', {md: shown().map(([b, ns]) => mdBook(b, ns)).join('\n')});
+  e.target.textContent = 'saved ✓'; status('exported → ' + r.out); setTimeout(() => { e.target.textContent = 'Export .md + .bib + .json'; }, 1500);
+};
+const FIELDS = [['doi', 'DOI'], ['title', 'Title'], ['author', 'Authors'], ['year', 'Year'], ['journal', 'Journal'], ['volume', 'Volume'], ['pages', 'Pages'], ['citekey', 'Cite key']];
+$('bif').innerHTML = FIELDS.map(([k, l]) => `<label><span>${l}</span><input id="m-${k}">${k === 'doi' ? '<button id="m-fetch">Fetch</button>' : ''}</label>`).join('');
+$('bib').onclick = () => {
+  if (!st.open) return;
+  FIELDS.forEach(([k]) => { $('m-' + k).value = meta[k] || ''; });
+  $('bim').textContent = ''; $('bi').showModal();
+};
+$('m-fetch').onclick = async () => {
+  $('bim').textContent = 'fetching…';
+  const r = await api('/api/doi', {doi: $('m-doi').value});
+  if (r.error) return $('bim').textContent = 'lookup failed: ' + r.error;
+  FIELDS.forEach(([k]) => { if (r[k] !== undefined) $('m-' + k).value = r[k]; });
+  $('m-citekey').value = ''; $('bim').textContent = 'filled — check, then Save';
+};
+$('bis').onclick = async () => {
+  meta = await api('/api/meta', Object.fromEntries(FIELDS.map(([k]) => [k, $('m-' + k).value])));
+  $('bi').close(); renderNotes(); status('book info saved · key ' + meta.citekey);
+};
+$('bix').onclick = () => $('bi').close();
+
+// ---- colour meanings ----
+function kRows() {
+  $('krows').innerHTML = '';
+  prefs.kinds.forEach((k, i) => {
+    const r = document.createElement('div');
+    r.style.cssText = 'display:flex;gap:6px;margin:4px 0';
+    r.innerHTML = `<input type="color" value="${k[0]}"><input style="flex:1" value="${esc(k[1]).replace(/"/g, '&quot;')}" placeholder="meaning"><button title="Remove">✕</button>`;
+    const [c, t, x] = r.children;
+    c.oninput = () => { prefs.kinds[i][0] = c.value; };
+    t.oninput = () => { prefs.kinds[i][1] = t.value; };
+    x.onclick = () => { if (prefs.kinds.length > 1) { prefs.kinds.splice(i, 1); kRows(); } };
+    $('krows').appendChild(r);
+  });
+}
+$('kedit').onclick = () => { kRows(); $('kd').showModal(); };
+$('kadd').onclick = () => { prefs.kinds.push(['#c3a6ff', 'new']); kRows(); };
+$('ksave').onclick = () => { prefs.kinds = prefs.kinds.filter(k => k[1].trim()); fillColours(); savePrefs(); drawAll(); side(); renderNotes(); $('kd').close(); };
+$('kx').onclick = async () => { // discard unsaved edits
+  $('kd').close();
+  prefs.kinds = ((await (await fetch('/api/state')).json()).prefs || {}).kinds || DK.map(k => [...k]);
+  fillColours();
+};
+
+// ---- background jobs (OCR, search index) + search ----
+let jobT = 0, sT = 0;
+async function pollJob() {
+  clearTimeout(jobT);
+  const j = await (await fetch('/api/job')).json();
+  const mb = b => (b / 1048576).toFixed(0) + ' MB';
+  if (j.running) { status(`${{ocr: 'OCR', opt: 'optimizing', index: 'indexing'}[j.kind]} ${j.progress || ''}…`); jobT = setTimeout(pollJob, 1500); return; }
+  if (!j.done) return;
+  status(!j.ok ? j.kind + ' failed' : j.kind === 'ocr' ? 'OCR finished' : j.kind === 'opt'
+    ? (j.after < j.before ? `optimized: ${mb(j.before)} → ${mb(j.after)}` : 'already as small as it gets') : 'index ready');
+  if ((j.kind === 'ocr' || j.kind === 'opt') && j.ok) await boot(await (await fetch('/api/state')).json(), cur);
+  if ($('sr').open) runSearch();
+}
+const sOpts = () => ({q: $('sq').value.trim(), scope: $('ss').value, case: $('scase').checked, whole: $('swhole').checked, mode: $('smode').value});
+async function loadHits(i) {
+  const s = sh;
+  if (!s || s.rects[i] || !s.pages.has(i)) return;
+  s.rects[i] = [];
+  s.rects[i] = (await api('/api/hits', {page: i, terms: s.terms, case: s.q.case, whole: s.q.whole})).r;
+  if (sh === s) draw(i);
+}
+function setOverlay(r, o) {
+  const old = sh;
+  sh = r.pages.length ? {q: o, terms: r.terms, pages: new Set(r.pages), list: r.pages.slice().sort((a, b) => a - b), rects: {}} : null;
+  if (old) Object.keys(old.rects).forEach(i => draw(+i));
+  io.disconnect(); pgs.forEach(d => io.observe(d)); // visible pages fetch their hit boxes
+  hbUpdate();
+}
+function hbUpdate() {
+  $('hb').hidden = !sh;
+  if (!sh) return;
+  const before = sh.list.filter(p => p < cur).length, here = sh.pages.has(cur);
+  $('hn').textContent = `${here ? before + 1 : '–'} / ${sh.list.length} pages`;
+  $('hbc').innerHTML = sh.terms.map((t, k) => `<span class="chip" style="background:${SC[k % SC.length]}">${esc(t)}</span>`).join('');
+}
+function hitStep(d) {
+  if (!sh) return;
+  const nxt = d > 0 ? sh.list.find(p => p > cur) : sh.list.slice().reverse().find(p => p < cur);
+  if (nxt !== undefined) go(nxt);
+}
+async function runSearch() {
+  const o = sOpts(), q = o.q;
+  if (!q) { $('sl').innerHTML = ''; $('sm').textContent = ''; $('sch').innerHTML = ''; return; }
+  if (st.open) await api('/api/notes', notes);
+  const r = await api('/api/search', o);
+  if (JSON.stringify(shLast && shLast.terms) !== JSON.stringify(r.terms)) shFil = new Set();
+  shLast = r;
+  if (st.open && r.state === 'ready') setOverlay(r, o);
+  const el = $('sl'); el.innerHTML = '';
+  $('sch').innerHTML = r.terms.map((t, k) => `<span class="chip${shFil.size && !shFil.has(k) ? ' off' : ''}" data-k="${k}" style="background:${SC[k % SC.length]}" title="Click to show only this phrase">${esc(t)} · ${r.counts[k]}</span>`).join('');
+  [...$('sch').children].forEach(c => c.onclick = () => { const k = +c.dataset.k; shFil.has(k) ? shFil.delete(k) : shFil.add(k); renderHits(); });
+  $('sm').textContent = r.state === 'building' ? 'Indexing this book for text search… (results appear when done)'
+    : r.state === 'none' ? '' : `${r.book.length < r.total ? 'first ' : ''}${r.book.length} sentences on ${r.total} pages · ${r.notes.length} in your notes`
+      + (r.book.length >= 400 ? ' (showing the first 400 sentences — narrow the search)' : '')
+      + (r.unindexed && $('ss').value === 'all' ? ` · ${r.unindexed} book(s) not indexed yet (search them once with "This book")` : '');
+  if (r.state === 'building') pollJob();
+  renderHits();
+}
+function renderHits() {
+  const r = shLast, el = $('sl');
+  if (!r) return;
+  [...$('sch').children].forEach(c => c.classList.toggle('off', shFil.size > 0 && !shFil.has(+c.dataset.k)));
+  el.innerHTML = '';
+  const ctx = +$('sctx').value, keep = h => !shFil.size || h.marks.some(m => shFil.has(m[2]));
+  const go2 = async h => {
+    $('sr').close();
+    if (h.book !== st.name) { await boot(await api('/api/openbook', {name: h.book}), h.page); runSearch(); } else go(h.page);
+  };
+  const row = (h, cls, html) => {
+    const d = document.createElement('div');
+    d.className = 'u'; d.style.setProperty('--c', '#999'); d.onclick = () => go2(h);
+    d.innerHTML = html; el.appendChild(d); return d;
+  };
+  if (r.notes.length) {
+    el.insertAdjacentHTML('beforeend', '<h4 style="margin:10px 0 6px">Your notes</h4>');
+    r.notes.forEach(h => row(h, '', `<small>${esc(h.book.replace(/\.pdf$/, '').slice(0, 50))} · p.${h.page + 1}</small><p>${esc((h.quote ? h.quote + ' ' : '') + (h.text || ''))}</p>`));
+  }
+  let lastBook = null, lastCh = null, lastPage = -1;
+  r.book.filter(keep).forEach(h => {
+    if (h.book !== lastBook) { // topic sheet: book, then chapter (from bookmarks), then page, in reading order
+      el.insertAdjacentHTML('beforeend', `<h4 style="margin:14px 0 4px">${esc(h.book.replace(/\.pdf$/, '').slice(0, 70))}</h4>`);
+      lastBook = h.book; lastCh = null; lastPage = -1;
+    }
+    const e = h.book === st.name ? toc.filter(t => t[2] - 1 <= h.page).pop() : null;
+    if (e && e !== lastCh) { el.insertAdjacentHTML('beforeend', `<div class="ch">${esc(e[1])}</div>`); lastCh = e; }
+    let m = '', at = 0;
+    h.marks.forEach(([a, b, k]) => {
+      if (a < at) return;
+      m += esc(h.cur.slice(at, a)) + `<mark style="background:${SC[k % SC.length]}">${esc(h.cur.slice(a, b))}</mark>`; at = b;
+    });
+    m += esc(h.cur.slice(at));
+    const c = a => a.length && ctx ? `<span class="ctx">${esc(a.join(' '))}</span> ` : '';
+    row(h, '', `<small>p.${h.page + 1}</small><p>${c(h.prev.slice(-ctx))}<span class="sc">${m}</span> ${ctx ? `<span class="ctx">${esc(h.next.slice(0, ctx).join(' '))}</span>` : ''}</p>`);
+  });
+  if (!el.children.length && r.state === 'ready') el.innerHTML = '<p style="color:#777">No matches.</p>';
+}
+const openSearch = () => { if (!st.open) return; $('sr').showModal(); $('sq').focus(); $('sq').select(); if ($('sq').value) runSearch(); };
+$('srch').onclick = openSearch;
+$('sx').onclick = () => $('sr').close();
+$('sq').oninput = () => { clearTimeout(sT); sT = setTimeout(runSearch, 250); };
+$('ss').onchange = $('smode').onchange = $('scase').onchange = $('swhole').onchange = runSearch;
+$('sctx').onchange = renderHits;
+const clearHits = () => { const o = sh; sh = null; if (o) Object.keys(o.rects).forEach(i => draw(+i)); hbUpdate(); };
+$('sclr').onclick = $('hc').onclick = clearHits;
+$('hp').onclick = () => hitStep(-1); $('hx2').onclick = () => hitStep(1);
+$('ocr').onchange = async e => {
+  const langs = e.target.value; e.target.value = '';
+  if (!langs || !st.open) return;
+  const r = await api('/api/ocr', {langs});
+  if (r.error) return status(r.error === 'busy' ? 'another job is running — wait for it to finish' : r.error);
+  status('OCR started — you can keep reading'); pollJob();
+};
+$('optz').onchange = async e => {
+  const mode = e.target.value; e.target.value = '';
+  if (!mode || !st.open) return;
+  await api('/api/notes', notes);
+  const r = await api('/api/optimize', {mode});
+  if (r.error) return status(r.error === 'busy' ? 'another job is running — wait for it to finish' : r.error);
+  status(`optimizing (${(r.size / 1048576).toFixed(0)} MB)… you can keep reading`); pollJob();
+};
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'f') { e.preventDefault(); openSearch(); }
+  else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'g' && sh) { e.preventDefault(); hitStep(e.shiftKey ? -1 : 1); }
+});
+
+// ---- review mode: your 1-5 confidence rating drives when a highlight comes back ----
+const today = () => Math.floor(Date.now() / 864e5), DAYS = {1: 0, 2: 1, 3: 3, 4: 7, 5: 21};
+let rq = [], rcur = null, rshow = false, rtotal = 0;
+function clozeOf(q) {
+  const toks = q.split(/(\s+)/), cand = [];
+  toks.forEach((t, i) => { if (t.replace(/[^\p{L}\p{N}]/gu, '').length >= 6) cand.push(i); });
+  const m = Math.min(3, Math.ceil(cand.length / 4)), pick = new Set();
+  for (let j = 1; j <= m; j++) pick.add(cand[Math.floor(j * cand.length / (m + 1))]);
+  return {toks, pick};
+}
+const isQ = n => n.quote && /\?\s*$/.test(n.text);
+function cardHtml(n, show) {
+  if (isQ(n)) return `<p>${esc(n.text)}</p>` + (show ? `<p class="ca">${esc(n.quote)}</p>` : '');
+  const {toks, pick} = clozeOf(n.quote || n.text);
+  const body = toks.map((t, i) => !pick.has(i) ? esc(t) : show ? `<mark>${esc(t)}</mark>` : `<span class="cz">${'x'.repeat(Math.min(12, t.length))}</span>`).join('');
+  return `<p>${body}</p>` + (show && n.quote && n.text ? `<p class="ca">${esc(n.text)}</p>` : '');
+}
+function buildQueue() {
+  const k = $('rk').value, t = today(), cf = n => n.card || {conf: 0, due: 0};
+  rq = [];
+  lib.forEach(b => {
+    if ($('rs').value === 'book' && b.book !== st.name) return;
+    b.notes.forEach(n => { if ((!k || n.hc === k) && cf(n).due <= t) rq.push({b, n}); });
+  });
+  rq.sort((x, y) => cf(x.n).conf - cf(y.n).conf || cf(x.n).due - cf(y.n).due);
+  rtotal = rq.length;
+}
+function nextCard() {
+  rcur = rq.shift(); rshow = false;
+  $('rn').textContent = rcur ? `${rq.length + 1} left of ${rtotal} due today` : '';
+  const rc = $('rc'), rb = $('rb');
+  if (!rcur) { rc.innerHTML = '<p style="color:#777">Nothing due. 🎉 Pick another colour/scope, or come back tomorrow.</p>'; rb.innerHTML = ''; return; }
+  rc.innerHTML = `<small style="color:#777">${esc(bt(rcur.b).slice(0, 60))} · p.${rcur.n.page + 1}${kind(rcur.n.hc) ? ' · ' + kind(rcur.n.hc) : ''}</small>` + cardHtml(rcur.n, false);
+  rb.innerHTML = '<button id="rshow">Show answer (space)</button>';
+  $('rshow').onclick = reveal;
+}
+function reveal() {
+  if (!rcur || rshow) return;
+  rshow = true;
+  $('rc').innerHTML = `<small style="color:#777">${esc(bt(rcur.b).slice(0, 60))} · p.${rcur.n.page + 1}</small>` + cardHtml(rcur.n, true);
+  $('rb').innerHTML = [[1, "1 · again"], [2, '2 · hard'], [3, '3 · ok'], [4, '4 · good'], [5, '5 · easy']].map(([c, l]) => `<button data-c="${c}">${l}</button>`).join('')
+    + '<button id="rgo" title="Open this page in the book">Go to page</button>';
+  $('rb').querySelectorAll('[data-c]').forEach(b => { b.onclick = () => rate(+b.dataset.c); });
+  $('rgo').onclick = async () => {
+    const c = rcur; $('rv').close();
+    if (c.b.book !== st.name) await boot(await api('/api/openbook', {name: c.b.book}), c.n.page); else go(c.n.page);
+  };
+}
+async function rate(conf) {
+  const c = rcur, card = {conf, due: today() + DAYS[conf], seen: ((c.n.card || {}).seen || 0) + 1};
+  c.n.card = card;
+  if (c.b.book === st.name) { const m = notes.find(x => x.id === c.n.id); if (m) { m.card = card; save(); } }
+  else await api('/api/card', {book: c.b.book, id: c.n.id, card});
+  if (conf === 1) rq.push(c);
+  nextCard();
+}
+async function openReview() {
+  if (st.open) await api('/api/notes', notes);
+  lib = await api('/api/library');
+  $('rk').innerHTML = '<option value="">All colours</option>' + prefs.kinds.map(([c, k]) => `<option value="${c}">${esc(k)}</option>`).join('');
+  if (!st.open) $('rs').value = 'all';
+  buildQueue(); nextCard(); $('rv').showModal();
+}
+$('revb').onclick = openReview;
+$('rs').onchange = $('rk').onchange = () => { buildQueue(); nextCard(); };
+$('rx').onclick = () => $('rv').close();
+$('rv').addEventListener('keydown', e => {
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); reveal(); }
+  else if (rshow && /^[1-5]$/.test(e.key)) rate(+e.key);
+});
+$('ranki').onclick = async e => {
+  const k = $('rk').value, cl = [], ba = [];
+  const f = t => String(t).replace(/\t/g, ' ').replace(/\n/g, '<br>');
+  lib.forEach(b => {
+    if ($('rs').value === 'book' && b.book !== st.name) return;
+    b.notes.forEach(n => {
+      if (k && n.hc !== k) return;
+      const tags = [kind(n.hc), ...n.tags, b.key].filter(Boolean).map(t => t.replace(/\s+/g, '_')).join(' ');
+      const src = `${bt(b)} p.${n.page + 1}`;
+      if (isQ(n)) return ba.push([f(n.text), f(n.quote + '<br><small>' + src + '</small>'), tags].join('\t'));
+      const {toks, pick} = clozeOf(n.quote || n.text); let j = 0;
+      const txt = toks.map((t, i) => pick.has(i) ? `{{c${++j}::${t}}}` : t).join('');
+      cl.push([f(txt), f((n.quote && n.text ? n.text + '<br>' : '') + '<small>' + src + '</small>'), tags].join('\t'));
+    });
+  });
+  const r = await api('/api/anki', {cloze: cl.join('\n'), basic: ba.join('\n')});
+  e.target.textContent = `saved ${cl.length}+${ba.length} ✓`; status('Anki files → ' + r.out);
+  setTimeout(() => { e.target.textContent = 'Export Anki'; }, 2500);
+};
+
+// ---- rapid revision player ----
+let rpL = [], rpI = 0, rpT = 0, rpOn = false, rpDir = 1;
+const rpSec = () => prefs.rapidSec || 8;
+function rpSource() {
+  const k = $('rpk').value;
+  if (k === '*') return pgs.map((_, i) => i);
+  return [...new Set(notes.filter(n => n.hl && (!k || n.hc === k)).map(n => n.page))].sort((a, b) => a - b);
+}
+function rpShow() {
+  if (!rpL.length) { $('rpi').textContent = 'no marked pages'; return rpStop(); }
+  rpI = Math.max(0, Math.min(rpL.length - 1, rpI));
+  go(rpL[rpI]);
+  $('rpi').textContent = `${rpI + 1}/${rpL.length} · ${Math.round((rpDir > 0 ? rpL.length - rpI - 1 : rpI) * rpSec() / 6) / 10} min left`;
+  if ($('rpa').checked) {
+    const t = notes.filter(n => n.page === rpL[rpI]).sort((a, b) => a.id - b.id).map(n => [n.quote, n.text].filter(Boolean).join('. ')).join('. ');
+    api('/api/say', {text: t});
+  }
+}
+function rpTick() {
+  clearTimeout(rpT);
+  if (!rpOn) return;
+  rpT = setTimeout(() => {
+    const nx = rpI + rpDir;
+    if (nx < 0 || nx >= rpL.length) return rpStop();
+    rpI = nx; rpShow(); rpTick();
+  }, rpSec() * 1000);
+}
+function rpStart() {
+  if (!st.open) return;
+  $('rp').hidden = false;
+  rpL = rpSource();
+  rpI = Math.max(0, rpL.findIndex(p => p >= cur)); if (rpI < 0 || (rpL.length && rpL[rpI] < cur)) rpI = 0;
+  rpOn = true; $('rpp').textContent = '⏸'; rpShow(); rpTick();
+}
+function rpStop() { rpOn = false; clearTimeout(rpT); $('rpp').textContent = '▶'; api('/api/say', {text: ''}); }
+$('rapb').onclick = () => {
+  $('rpk').innerHTML = '<option value="">Highlighted pages</option>' + prefs.kinds.map(([c, k]) => `<option value="${c}">only ${esc(k)}</option>`).join('') + '<option value="*">Every page</option>';
+  $('rpt').textContent = rpSec() + 's'; rpStart();
+};
+$('rpp').onclick = () => { if (rpOn) rpStop(); else { rpOn = true; $('rpp').textContent = '⏸'; rpTick(); } };
+$('rpn').onclick = () => { rpI++; rpShow(); rpTick(); };
+$('rpb').onclick = () => { rpI--; rpShow(); rpTick(); };
+$('rpr').onclick = () => { rpDir = -rpDir; $('rpr').style.background = rpDir < 0 ? '#ffd95a' : ''; };
+$('rpf').onclick = () => { prefs.rapidSec = Math.max(2, rpSec() - 2); $('rpt').textContent = rpSec() + 's'; savePrefs(); rpTick(); };
+$('rps').onclick = () => { prefs.rapidSec = rpSec() + 2; $('rpt').textContent = rpSec() + 's'; savePrefs(); rpTick(); };
+$('rpk').onchange = () => { rpL = rpSource(); rpI = 0; rpShow(); rpTick(); };
+$('rpx').onclick = () => { rpStop(); $('rp').hidden = true; };
+
+// ---- study timer (logged per book) ----
+const tm = {run: false, t0: 0, acc: 0, book: ''};
+const tmEl = () => tm.acc + (tm.run ? (Date.now() - tm.t0) / 1000 : 0);
+const tmFlush = () => { // log the running stretch to the book it was spent on
+  if (!tm.run) return;
+  const now = Date.now(), secs = (now - tm.t0) / 1000;
+  tm.acc += secs; tm.t0 = now;
+  fetch('/api/study', {method: 'POST', keepalive: true, headers: {'X-App': '1'}, body: JSON.stringify({book: tm.book, secs})});
+};
+$('tmb').onclick = () => {
+  if (tm.run) { tmFlush(); tm.run = false; }
+  else { tm.run = true; tm.t0 = Date.now(); tm.book = st.name || ''; }
+  $('tmb').lastChild.textContent = tm.run ? ' ⏸' : ' ▶';
+};
+setInterval(() => { $('tmv').textContent = new Date(tmEl() * 1000).toISOString().substr(11, 8); }, 500);
+setInterval(tmFlush, 60000);
+addEventListener('beforeunload', tmFlush);
+// closing the tab inside the 400 ms debounce must not lose the last edit
+addEventListener('pagehide', () => { if (dirty) fetch('/api/notes', {method: 'POST', headers: {'X-App': '1'}, body: JSON.stringify(notes), keepalive: true}); });
+$('stb').onclick = async () => {
+  tmFlush();
+  const r = await (await fetch('/api/study')).json(), h = s => (s >= 3600 ? Math.floor(s / 3600) + 'h ' : '') + Math.round(s % 3600 / 60) + 'm';
+  const mx = Math.max(1, ...r.week.map(w => w[1]));
+  $('sdb').innerHTML = `<p><b>Today ${h(r.today)}</b> · streak ${r.streak} day${r.streak === 1 ? '' : 's'}</p>`
+    + r.week.map(([d, s]) => `<div style="display:flex;gap:6px;align-items:center"><span style="width:84px">${d.slice(5)}</span><span style="height:10px;background:#3b82f6;width:${Math.round(s / mx * 200)}px;border-radius:3px"></span> ${s ? h(s) : ''}</div>`).join('')
+    + '<h4>By book</h4>' + (r.books.map(([b, s]) => `<div>${esc(b.replace(/\.pdf$/, '').slice(0, 60))} — ${h(s)}</div>`).join('') || '<small>nothing yet</small>');
+  $('sd').showModal();
+};
+$('sdx').onclick = () => $('sd').close();
+const tmBook = boot;  // a book switch must not credit time to the wrong book
+boot = async function (s, keep) { tmFlush(); const r = await tmBook(s, keep); if (tm.run) tm.book = st.name || ''; return r; };
+
+// ---- paste clipboard as a note ----
+async function pasteNote() {
+  if (!st.open) return;
+  let t = '';
+  try { t = (await navigator.clipboard.readText()).trim(); } catch (e) { return status('allow clipboard access to paste a note'); }
+  if (!t) return status('clipboard is empty');
+  const n = {id: Date.now(), page: cur, text: t, ink: [], rect: [0.04, 0.02, 0.2, 0.05]};
+  notes.push(n); act = n.id; save(); drawAll(); side(); renderNotes();
+  status('pasted as a note on p.' + (cur + 1));
+}
+$('pstb').onclick = pasteNote;
+
+$('open').onclick = async () => { status('choose a PDF…'); await boot(await api('/api/pick')); status(''); };
+$('lib').onchange = async () => { if ($('lib').value) await boot(await api('/api/openbook', {name: $('lib').value})); };
+$('prev').onclick = () => go(cur - 1);
+$('next').onclick = () => go(cur + 1);
+$('pn').onchange = () => go(parseInt($('pn').value) - 1);
+const setTheme = t => { document.body.classList.remove('sepia', 'dark'); if (t) document.body.classList.add(t); $('theme').value = t; };
+$('theme').onchange = () => { prefs.theme = $('theme').value; setTheme(prefs.theme); savePrefs(); };
+$('cols').onchange = () => {
+  const n = +$('cols').value, p = cur;
+  $('pages').classList.toggle('g', n > 1); $('pages').style.setProperty('--n', n);
+  setTimeout(() => go(p));
+};
+$('pages').onclick = e => { // grid overview: click a page number to zoom in on that page
+  if (!e.target.classList.contains('lbl') || $('cols').value === '1') return;
+  const p = +e.target.parentNode.dataset.i;
+  $('cols').value = '1'; $('cols').onchange(); setTimeout(() => go(p), 20);
+};
+$('nup').onchange = async e => {
+  const v = e.target.value; e.target.value = '';
+  if (!v || !st.open) return;
+  const [cols, rows] = v.split('x').map(Number);
+  status('building ' + v + ' PDF… (large books take a minute)');
+  const r = await api('/api/nup', {cols, rows});
+  if (r.error) return status(r.error);
+  status('saved → ' + r.out + ' (' + r.mb + ' MB)');
+};
+$('zi').onclick = () => zoom(1.2); $('zo').onclick = () => zoom(1 / 1.2);
+const scr = on => { document.body.classList.toggle('scroll', on); $('t-scroll').classList.toggle('on', on); };
+$('t-scroll').onclick = () => scr(!document.body.classList.contains('scroll'));
+scr(navigator.maxTouchPoints > 0);   // iPad: start in scroll mode
+$('t-hl').onclick = () => setTool('hl'); $('t-type').onclick = () => setTool('type'); $('t-pen').onclick = () => setTool('pen'); $('t-crop').onclick = () => setTool('crop'); $('t-erase').onclick = () => setTool('erase'); $('t-lasso').onclick = () => setTool('lasso'); $('t-space').onclick = () => setTool('space');
+$('undo').onclick = undo;
+$('tab-th').onclick = () => navTab('th'); $('tab-bm').onclick = () => navTab('bm'); $('tab-nt').onclick = () => navTab('nt');
+$('cpall').onclick = e => copy(units().map(unit).join('\n\n'), e.target);
+const addBm = async () => { await bm({op: 'add', page: cur, title: $('bmt').value}); $('bmt').value = ''; status('bookmarked p.' + (cur + 1)); };
+$('bma').onclick = addBm; $('bmq').onclick = addBm;
+$('bmt').onkeydown = e => { if (e.key === 'Enter') addBm(); };
+$('all').onchange = side;
+$('del').onclick = async e => {
+  if (!sure) { sure = setTimeout(() => { sure = 0; e.target.textContent = 'Delete page'; }, 3000); e.target.textContent = 'Really delete p.' + (cur + 1) + '?'; return; }
+  clearTimeout(sure); sure = 0; e.target.textContent = 'Delete page';
+  await boot(await api('/api/edit', {op: 'delete', page: cur}), cur); status('page deleted');
+};
+const setMargin = all => async () => {
+  if (!st.open) return;
+  if (st.open) await api('/api/notes', notes);   // flush pending edits first
+  status('adding margin…');
+  await boot(await api('/api/margin', {page: cur, all, pct: +$('mpc').value || 0}), cur);
+  status($('mpc').value > 0 ? 'margin ' + $('mpc').value + '% set' : 'margin removed');
+};
+$('mpg').onclick = setMargin(false); $('mal').onclick = setMargin(true);
+$('addb').onclick = async () => { await boot(await api('/api/edit', {op: 'blank', page: cur}), cur + 1); status('blank page added'); };
+$('addp').onclick = async () => {
+  status('choose a PDF…'); const n = st.pages;
+  await boot(await api('/api/edit', {op: 'pdf', page: cur}), cur + 1);
+  status(st.pages > n ? (st.pages - n) + ' pages added' : '');
+};
+$('rest').onclick = async () => { await boot(await api('/api/restore'), cur); status('restored'); };
+$('exp').onclick = async () => { status('exporting…'); const r = await api('/api/export'); status('saved → ' + r.out); };
+document.onkeydown = e => {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'ArrowLeft') go(cur - 1);
+  else if (e.key === 'ArrowRight') go(cur + 1);
+  else if ((e.metaKey || e.ctrlKey) && e.key === 'z') undo();
+  else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteNote(); }
+  else if (e.key === 'p' && !$('rp').hidden) $('rpp').click();
+  else if ((e.metaKey || e.ctrlKey) && e.key === 'd') { e.preventDefault(); addBm(); }
+};
+// open from an exported-note link:  http://127.0.0.1:8765/#b=<book>&p=<page>
+boot().then(async () => {
+  const h = new URLSearchParams(location.hash.slice(1)), b = h.get('b');
+  if (!b) return;
+  if (b !== st.name) await boot(await api('/api/openbook', {name: b}), (+h.get('p') || 1) - 1);
+  else go((+h.get('p') || 1) - 1);
+});
+</script>
+<script>
+for(const [k,b] of [["nonav","tnav"],["noside","tside"],["nobar","tbar"]]){
+  const e=document.getElementById(b);
+  const set=v=>{document.body.classList.toggle(k,v);e.classList.toggle("on",!v);try{localStorage[k]=v?1:""}catch(_){}};
+  set(!!(()=>{try{return localStorage[k]}catch(_){}})());
+  e.onclick=()=>set(!document.body.classList.contains(k));
+}
+</script>
+<script>
+// drag a handle to resize its panel; width remembered
+for(const [h,p,dir,k] of [["rzn","nav",1,"wnav"],["rzs","side",-1,"wside"]]){
+  const P=document.getElementById(p),H=document.getElementById(h);
+  try{if(localStorage[k])P.style.width=localStorage[k]+"px"}catch(_){}
+  H.onpointerdown=e=>{
+    const x0=e.clientX,w0=P.offsetWidth;H.setPointerCapture(e.pointerId);H.classList.add("d");
+    H.onpointermove=m=>{P.style.width=Math.max(120,Math.min(800,w0+dir*(m.clientX-x0)))+"px"};
+    H.onpointerup=()=>{H.onpointermove=H.onpointerup=null;H.classList.remove("d");try{localStorage[k]=P.offsetWidth}catch(_){}};
+  };
+}
+</script>
